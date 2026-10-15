@@ -180,20 +180,23 @@
       status.textContent = 'Sending…';
       submitBtn.disabled = true;
 
-      fetch(form.action, {
+      // FormSubmit's JSON endpoint lives at /ajax/; the plain action URL is the no-JS fallback.
+      fetch(form.action.replace('formsubmit.co/', 'formsubmit.co/ajax/'), {
         method: 'POST',
         body: new FormData(form),
         headers: { Accept: 'application/json' }
       })
         .then(function (res) {
-          if (res.ok) {
-            form.reset();
-            status.className = 'form-status is-success';
-            status.textContent =
-              'Got it — your request is in. We respond within 24 hours.';
-          } else {
-            throw new Error('Form endpoint returned ' + res.status);
-          }
+          if (!res.ok) throw new Error('Form endpoint returned ' + res.status);
+          return res.json();
+        })
+        .then(function (data) {
+          // FormSubmit answers 200 with success "false" for problems such as an unactivated form.
+          if (String(data.success) !== 'true') throw new Error(data.message || 'Form rejected');
+          form.reset();
+          status.className = 'form-status is-success';
+          status.textContent =
+            'Got it — your request is in. We respond within 24 hours.';
         })
         .catch(function () {
           status.className = 'form-status is-error';
